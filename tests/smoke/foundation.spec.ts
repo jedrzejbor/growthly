@@ -29,10 +29,12 @@ for (const path of [
   "/payments",
   "/commissions",
 ]) {
-  test(`${path} redirects before serving workspace content`, async ({ request }) => {
+  test(`${path} redirects before serving workspace content`, async ({ request, baseURL }) => {
     const response = await request.get(path, { maxRedirects: 0 });
     expect(response.status()).toBe(307);
-    expect(new URL(response.headers().location!, response.url()).pathname).toBe("/sign-in");
+    expect(new URL(response.headers().location!, response.url()).href).toBe(
+      new URL("/sign-in", baseURL).href,
+    );
   });
 }
 

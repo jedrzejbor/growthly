@@ -6,6 +6,7 @@ Read the assigned role brief in `agents/`, the product decision table and the ar
 
 1. Claim a backlog item. Record its owner, acceptance criteria, affected paths and dependencies in the task or PR. Check other active changes touching those paths.
 2. Start from the agreed integration commit in a dedicated branch. For a second agent in the same clone, use a separate worktree, for example `git worktree add -b feat/auth-session ../growthly-auth <base-commit>`. Keep one writer per worktree. Sprint 0 uses `chore/project-foundation`.
+   Assign a free `PLAYWRIGHT_PORT` and an individual `.growthly-slot` per worktree. Run tests in the checkout that produced the build. Start, inspect, reset and stop local databases with the [worktree launcher](docs/DATABASE.md). Keep each checkout’s service URL and credentials in its own ignored environment file.
 3. Agree on a contract with the consuming role before changing route names, data shapes, migrations or integration behavior. Split dependent work so a consumer can develop against fixtures. Coordinate overlapping files with their current owner.
 4. Deliver a focused PR with scope, decisions, exact checks and their results. Link a dependent PR or pending decision when it affects review. The designated reviewer reviews and the maintainer owns integration.
 

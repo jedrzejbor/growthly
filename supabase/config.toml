@@ -1,4 +1,6 @@
-project_id = "growthly"
+# The worktree launcher supplies SUPABASE_PROJECT_ID and SUPABASE_DB_PORT.
+# Empty defaults make an unscoped CLI invocation fail before it creates containers.
+project_id = ""
 
 [api]
 enabled = true
@@ -7,7 +9,7 @@ schemas = ["public"]
 extra_search_path = ["public", "extensions"]
 
 [db]
-port = 54322
+port = 0
 shadow_port = 54320
 major_version = 17
 

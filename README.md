@@ -25,7 +25,7 @@ pnpm exec playwright install --with-deps chromium
 pnpm test:e2e
 ```
 
-Type checking generates Next.js route types before calling TypeScript. Smoke tests start the built app on loopback port 3100 and close it afterwards. Leave that port free. Rebuild after source changes. On machines with a restricted browser download, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to a compatible installed Chromium executable for the test command. CI uses the Playwright-managed browser. Use `pnpm format` to apply formatting.
+Type checking generates Next.js route types before calling TypeScript. Smoke tests start the built app on loopback port 3100 and close it afterwards. Set `PLAYWRIGHT_PORT` to a different free port for each concurrent worktree, for example `PLAYWRIGHT_PORT=3111 pnpm test:e2e`. Each suite starts its own server and rejects a port already in use. Rebuild after source changes. On machines with a restricted browser download, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to a compatible installed Chromium executable for the test command. CI uses the Playwright-managed browser. Use `pnpm format` to apply formatting.
 
 ## Project map
 
@@ -47,4 +47,4 @@ Type checking generates Next.js route types before calling TypeScript. Smoke tes
 - [Design system](docs/DESIGN-SYSTEM.md)
 - [Roadmap](ROADMAP.md), [backlog](docs/BACKLOG.md) and [changelog](CHANGELOG.md)
 
-Vercel is the intended hosting platform. Its Next.js preset can use the lockfile and `pnpm build` with Node 24. Coordinate environment and branch settings before connecting a Vercel project. Sprint 0 uses local builds and GitHub Actions.
+Vercel is the intended hosting platform. Its Next.js preset can use the lockfile and `pnpm build` with Node 24. Vercel Git deployments are disabled for `chore/project-foundation` in `vercel.json`. Sprint 0 uses local builds and GitHub Actions.
