@@ -6,7 +6,7 @@
 
 ## Optional local development
 
-Use Docker Engine 28 or newer and Supabase CLI 2.75.0. Run the launcher in Bash on the machine hosting Docker (Linux, macOS with Docker Desktop, or WSL with local Docker integration). Pick a different slot from 1 to 99 for each active worktree on that host. Store it once in the ignored file at the worktree root.
+Use Bash, Python 3 and Supabase CLI 2.75.0 on the Linux Docker host. Supported configurations are described below. Pick a different slot from 1 to 99 for each active worktree on that host. Store it once in the ignored file at the worktree root.
 
 ```sh
 printf '11\n' > .growthly-slot
@@ -20,7 +20,18 @@ The launcher derives the project and network names from the checkout's absolute 
 
 ### Network boundary
 
-CLI 2.75.0 accepts `--network-id` and leaves the host IP unspecified when it publishes ports. The launcher creates a dedicated Docker bridge with `com.docker.network.bridge.host_binding_ipv4=127.0.0.1`, verifies the bridge settings before startup, and checks the running containers' network and published addresses afterwards. An unexpected mapping stops that project. A bare CLI invocation fails config validation until the launcher supplies the worktree identity and DB port. Use the default Docker NAT mode with direct routing disabled. Docker daemon administrators can access local containers.
+The launcher creates a local IPv4 bridge with NAT, loopback publishing and explicit labels for the project, full worktree hash and port slot. It checks the labels, bridge options, membership of every project container and the complete endpoint list before reuse. Only the service names from CLI 2.75.0 and their configured loopback mappings are accepted. Bare CLI startup fails project configuration validation. Use the launcher for lifecycle commands.
+
+Docker direct routing can expose **container IPs** even when the published host address is loopback. Two Linux configurations have verifiable boundaries:
+
+- On a native Docker host (Engine 28.0.2+ with the iptables backend), a disposable, read-only BusyBox container runs `sleep` with dropped capabilities. Before starting Supabase the launcher checks the effective raw PREROUTING drop rule for its IP. After startup it checks the corresponding rule for every service IP. The BusyBox 1.37 image is pinned by multi-platform digest. The inspection uses `iptables -t raw -S PREROUTING` or read-only `sudo -n` access to that command. Unrecognized earlier firewall exemptions, trusted interfaces, routed gateway modes and missing drop rules block startup.
+- For rootless Docker 28+, the launcher checks the local Unix socket peer and the daemon's process ancestry for RootlessKit using slirp4netns and its built-in port forwarder. This user-mode network has no inbound route from the host LAN to container IPs. The launcher still verifies all published sockets and network options. Other rootless configurations, remote sockets and hosts where routing cannot be verified must use a supported Linux development VM. Keep Docker administrator access restricted. An administrator with daemon or firewall access can change the boundary after a check.
+
+### Shutdown and recovery
+
+Use `scripts/local-supabase.sh stop` before removing or moving a worktree or changing its slot. It gracefully stops verified service containers, removes them by ID and removes the owned empty network by ID. Named database and storage volumes survive normal shutdown. Repeated stop is safe. A per-worktree file lock serializes lifecycle commands and releases on exit. The slot label detects an existing reservation on the daemon.
+
+A failed start rolls back containers and named service volumes added during that attempt. An existing empty owned network or existing named volume survives rollback. If startup encounters an active project it verifies its state before returning. For partial state, stop the verified project before retrying. After a hard kill, rerun `stop` with the original checkout path and slot. Check `docker network inspect <network>`, the container labels and attachments if cleanup refuses. A foreign endpoint must first be detached by its owner. Never prune all networks or volumes to recover a worktree. For a legacy unlabeled network, its original owner must inspect and retire it separately. The launcher never adopts it.
 
 On a cloud development host, run the launcher there, keep inbound service ports closed and disable public IDE port forwarding. Use a private SSH tunnel if a developer needs the API, for example `ssh -N -L 127.0.0.1:54111:127.0.0.1:54111 developer@dev-host`. Check the actual mappings with `scripts/local-supabase.sh ports`. On Linux, inspect listeners with `ss -lnt` on the Docker host. Verify that the API responds on loopback and refuses connections on the host's LAN address. Docker can implement publishing through NAT without creating a listening socket, so check both mappings and connectivity. Host firewall and cloud ingress rules are managed separately.
 

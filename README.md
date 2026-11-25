@@ -47,4 +47,10 @@ Type checking generates Next.js route types before calling TypeScript. Smoke tes
 - [Design system](docs/DESIGN-SYSTEM.md)
 - [Roadmap](ROADMAP.md), [backlog](docs/BACKLOG.md) and [changelog](CHANGELOG.md)
 
-Vercel is the intended hosting platform. Its Next.js preset can use the lockfile and `pnpm build` with Node 24. Vercel Git deployments are disabled for `chore/project-foundation` in `vercel.json`. Sprint 0 uses local builds and GitHub Actions.
+## Deployment hold
+
+Automatic Git-triggered Vercel deployments are disabled for every branch, including `main`, until the founder approves a deployment. The repository uses the boolean `git.deploymentEnabled: false`. Vercel reads the configuration from the revision and project root it builds. Keep the repository disconnected while other branches or older revisions can lack this setting. [Vercel Git configuration](https://vercel.com/docs/project-configuration/git-configuration#turning-off-all-automatic-deployments)
+
+Before merging, the maintainer should check the intended Vercel team's project list and Settings → Git for any project linked to `jedrzejbor/growthly`. For any existing link, confirm its root directory and production branch, and inspect Deploy Hooks, GitHub webhooks and CI workflows for independent deployment triggers. The repository flag governs Git integration; manual CLI/API deployments and hooks have separate controls. Resolve unexpected connections before merging.
+
+Once the founder approves a target environment, DevOps should document the approved branches, permissions and preview/production settings in a separate PR. Review the Git configuration and external project settings together before connecting or enabling a deployment.
