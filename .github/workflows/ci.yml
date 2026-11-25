@@ -1,0 +1,77 @@
+name: Foundation checks
+on:
+  pull_request:
+  push:
+    branches: [main, chore/project-foundation]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: foundation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --prod
+      - run: bash -n scripts/local-supabase.sh
+      - run: python3 -B -m unittest discover -s tests/infra -v
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/**/trace.zip
+          if-no-files-found: ignore
+          retention-days: 7
+
+  local-supabase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
+        with:
+          version: 2.75.0
+      - name: Start a disposable worktree stack
+        run: |
+          echo 11 > .growthly-slot
+          scripts/local-supabase.sh start > /dev/null
+      - name: Check local services and published ports
+        run: |
+          scripts/local-supabase.sh status > /dev/null
+          scripts/local-supabase.sh ports
+          curl --fail --silent --output /dev/null http://127.0.0.1:54111/auth/v1/health
+          pg_isready -h 127.0.0.1 -p 54112
+          ss -H -lnt '( sport >= :54110 and sport <= :54119 )' | tee "$RUNNER_TEMP/supabase-listeners"
+          awk '$4 !~ /^127[.]0[.]0[.]1:/ {exit 1}' "$RUNNER_TEMP/supabase-listeners"
+          for addr in $(hostname -I); do
+            for port in 54111 54112; do
+              if nc -z -w 1 "$addr" "$port"; then
+                echo "Unexpected connection to $addr on $port"
+                exit 1
+              fi
+            done
+          done
+      - name: Stop the disposable stack
+        if: always()
+        run: |
+          scripts/local-supabase.sh stop
+          scripts/local-supabase.sh stop
+          test -z "$(docker network ls -q --filter label=io.growthly.slot=11)"
